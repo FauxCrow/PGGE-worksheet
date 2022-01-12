@@ -4,39 +4,104 @@ using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
-    public Animator animator;
-    CharacterController playerController;
+    [HideInInspector]
+    public CharacterController mCharacterController;
+    public Animator mAnimator;
 
-    private Vector3 moveDirection;
-    private float moveSpeed = 1f;
+    public float mWalkSpeed = 1.0f;
+    public float mRotationSpeed = 50.0f;
 
-    // Start is called before the first frame update
+    public float mGravity = -30.0f;
+    private Vector3 mVelocity = new Vector3(0.0f, 0.0f, 0.0f);
+    
+    private float hInput;
+    private float vInput;
+    private float speed;
+
+    private bool jump = false;
+    private bool crouch = false;
+    public float mJumpHeight = 1.0f;
+
     void Start()
     {
-        playerController = GetComponent<CharacterController>();
+        mCharacterController = GetComponent<CharacterController>();
     }
 
-    // Update is called once per frame
     void Update()
     {
-        moveDirection = new Vector3(Input.GetAxis("Horizontal"), 0f, Input.GetAxis("Vertical"));
-        moveDirection *= moveSpeed;
+        HandleInputs();
+        Move();
+    }
 
-        playerController.Move(moveDirection * Time.deltaTime);
+    private void FixedUpdate()
+    {
+        ApplyGravity();
+    }
 
-        animator.SetFloat("PosX", Input.GetAxis("Horizontal"));
-        animator.SetFloat("PosZ", Input.GetAxis("Vertical") * moveSpeed / 2);
+    private void HandleInputs()
+    {
+        hInput = Input.GetAxis("Horizontal");
+        vInput = Input.GetAxis("Vertical");
+        speed = mWalkSpeed;
 
-        //transform.Rotate(0.0f, Input.GetAxis("Horizontal") * 50f * Time.deltaTime, 0.0f);
-
-        // Sprint key
-        if (Input.GetKeyDown(KeyCode.LeftShift))
+        if (Input.GetKey(KeyCode.LeftShift))
         {
-            moveSpeed = 2f;
+            speed = mWalkSpeed * 2.0f;
         }
-        else if (Input.GetKeyUp(KeyCode.LeftShift))
+        if (Input.GetKeyDown(KeyCode.Space))
         {
-            moveSpeed = 1f;
+            jump = true;
+        }
+        if (Input.GetKeyUp(KeyCode.Space))
+        {
+            jump = false;
+        }
+        if (Input.GetKeyDown(KeyCode.Tab))
+        {
+            crouch = !crouch;
+            Crouch();
+        }
+    }
+
+    private void Move()
+    {
+        if (mAnimator == null) return;
+
+        transform.Rotate(0.0f, hInput * mRotationSpeed * Time.deltaTime, 0.0f);
+
+        Vector3 forward = transform.TransformDirection(Vector3.forward).normalized;
+        forward.y = 0.0f;
+
+        mCharacterController.Move(forward * vInput * speed * Time.deltaTime);
+        mAnimator.SetFloat("PosX", 0);
+        mAnimator.SetFloat("PosZ", vInput * speed / (2.0f * mWalkSpeed));
+
+        if (jump == true)
+        {
+            Jump();
+            jump = false;
+        }
+    }
+
+    private void Crouch()
+    {
+        mAnimator.SetBool("Crouch", crouch);
+    }
+
+    private void Jump()
+    {
+        mAnimator.SetTrigger("Jump");
+    }
+
+    void ApplyGravity()
+    {
+        // apply gravity here
+        mVelocity.y += mGravity * Time.deltaTime;
+
+        mCharacterController.Move(mVelocity * Time.deltaTime);
+        if (mCharacterController.isGrounded && mVelocity.y < 0)
+        {
+            mVelocity.y = 0f;
         }
     }
 }
